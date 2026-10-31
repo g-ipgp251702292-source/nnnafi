@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HEAD TILTING: MISI KATA NAFI</title>
+    <!-- Google Fonts & FontAwesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- MediaPipe Face Landmarker CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_landmarker/face_landmarker.js" crossorigin="anonymous"></script>
+
+    <style>
+        :root {
+            --primary: #FF6B6B;
+            --secondary: #4ECDC4;
+            --accent: #FFE66D;
+            --dark: #2F3640;
+            --light: #F7F1E3;
+            --success: #2ED573;
+            --danger: #FF4757;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Fredoka', 'Comic Neue', cursive, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #70a1ff, #7bed9f);
+            color: var(--dark);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 850px;
+            background: white;
+            border-radius: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+            position: relative;
+            margin: 20px;
+            border: 5px solid var(--accent);
+        }
+
+        .screen {
+            display: none;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: var(--primary);
+            text-shadow: 2px 2px 0px var(--accent);
+            margin-bottom: 15px;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            color: #3742fa;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: #57606f;
+        }
+
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px 35px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #c23616;
+            transition: all 0.1s ease;
+            margin: 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 0 #c23616;
+        }
+
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #c23616;
+        }
+
+        .btn-secondary {
+            background-color: var(--secondary);
+            box-shadow: 0 6px 0 #0f9b8e;
+        }
+        .btn-secondary:hover { box-shadow: 0 8px 0 #0f9b8e; }
+        .btn-secondary:active { box-shadow: 0 2px 0 #0f9b8e; }
+
+        .mascot-container {
+            margin: 15px auto;
+            width: 120px;
+            height: 120px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 4rem;
+            box-shadow: inset 0 -5px 0 rgba(0,0,0,0.1);
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .instructions-box {
+            background: #f1f2f6;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: left;
+            margin-bottom: 20px;
+        }
+        .instructions-box li {
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+            line-height: 1.5;
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            background: #dfe4ea;
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            border: 2px solid #ced6e0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--success);
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+
+        .layout-game {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .game-main-content {
+            flex: 1;
+        }
+
+        .camera-sidebar {
+            width: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #f1f2f6;
+            padding: 10px;
+            border-radius: 15px;
+            border: 2px dashed #ced6e0;
+        }
+
+        .camera-box {
+            position: relative;
+            width: 180px;
+            height: 135px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 3px solid var(--dark);
+            background: #000;
+            margin-bottom: 8px;
+        }
+
+        #webcam {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        .tilt-status {
+            font-size: 0.9rem;
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 10px;
+            background: white;
+            text-align: center;
+            width: 100%;
+            color: #333;
+        }
+
+        .question-box {
+            background: #fff9e6;
+            border: 3px dashed var(--secondary);
+            border-radius: 20px;
+            padding: 25px;
+            font-size: 1.6rem;
+            font-weight: 600;
+            margin-bottom: 25px;
+            color: var(--dark);
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .choices-container {
+            display: flex;
+            justify-content: space-around;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .choice-card {
+            flex: 1;
+            padding: 25px;
+            border-radius: 20px;
+            font-size: 2rem;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 8px 0 rgba(0,0,0,0.15);
+            transition: transform 0.2s, background-color 0.2s;
+            text-align: center;
+        }
+
+        .choice-bukan {
+            background-color: #ff4757;
+            box-shadow: 0 6px 0 #eb2f06;
+        }
+
+        .choice-tidak {
+            background-color: #2ed573;
+            box-shadow: 0 6px 0 #20bf6b;
+        }
+
+        .choice-card.highlight {
+            transform: scale(1.08);
+            border: 4px solid white;
+            box-shadow: 0 12px 0 rgba(0,0,0,0.25);
+        }
+
+        .countdown-overlay {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #333;
+            background: var(--accent);
+            padding: 8px 15px;
+            border-radius: 20px;
+            margin-top: 10px;
+            display: inline-block;
+        }
+
+        .feedback-area {
+            font-size: 1.3rem;
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 15px;
+            margin-top: 15px;
+            display: none;
+            text-align: left;
+        }
+        .feedback-correct {
+            background-color: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        .feedback-wrong {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 1. HALAMAN UTAMA -->
+    <div id="main-screen" class="screen active">
+        <div class="mascot-container">🐵</div>
+        <h1>HEAD TILTING:<br>MISI KATA NAFI</h1>
+        <p>Uji kefahaman Bahasa Melayu Tahun 4 anda mengenai penggunaan kata nafi <strong>BUKAN</strong> dan <strong>TIDAK</strong> sambil bergerak aktif!</p>
+        <button class="btn" onclick="goToScreen('instruction-screen')"><i class="fas fa-play"></i> MULA PERMAINAN</button>
+    </div>
+
+    <!-- 2. HALAMAN ARAHAN -->
+    <div id="instruction-screen" class="screen">
+        <h2><i class="fas fa-info-circle"></i> Arahan Permainan</h2>
+        <div class="instructions-box">
+            <ul>
+                <li><strong>Pengesanan Kepala:</strong> Sistem menggunakan kamera untuk mengesan pergerakan kepala anda secara langsung.</li>
+                <li><strong>Pilihan BUKAN (Kiri):</strong> Condongkan/miringkan kepala anda ke arah <strong>KIRI</strong>.</li>
+                <li><strong>Pilihan TIDAK (Kanan):</strong> Condongkan/miringkan kepala anda ke arah <strong>KANAN</strong>.</li>
+                <li><strong>Kiraan Undur:</strong> Kekalkan kepala anda pada arah pilihan selama <strong>2 saat</strong> untuk mengesahkan jawapan.</li>
+                <li><strong>Markah:</strong> Terdapat 10 soalan. Setiap jawapan betul bernilai 10 markah!</li>
+            </ul>
+        </div>
+        <button class="btn btn-secondary" onclick="goToScreen('main-screen')">Kembali</button>
+        <button class="btn" onclick="startCameraAndGame()"><i class="fas fa-camera"></i> Benarkan Kamera & Mula</button>
+    </div>
+
+    <!-- 3. HALAMAN PERMAINAN -->
+    <div id="game-screen" class="screen">
+        <div class="game-header">
+            <span style="font-weight: bold; font-size: 1.2rem;" id="question-counter">Soalan 1/10</span>
+            <span style="font-weight: bold; font-size: 1.2rem; color: var(--primary);" id="score-display">Markah: 0</span>
+        </div>
+        
+        <div class="progress-bar-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+
+        <div class="layout-game">
+            <div class="game-main-content">
+                <div class="question-box" id="question-text">
+                    Memuatkan soalan...
+                </div>
+
+                <div class="choices-container">
+                    <div id="choice-bukan" class="choice-card choice-bukan">
+                        <i class="fas fa-arrow-left"></i> BUKAN
+                    </div>
+                    <div id="choice-tidak" class="choice-card choice-tidak">
+                        TIDAK <i class="fas fa-arrow-right"></i>
+                    </div>
+                </div>
+
+                <div id="countdown-container" style="text-align: center; min-height: 40px;">
+                    <span id="countdown-text" class="countdown-overlay" style="display: none;">Mengesahkan jawapan dalam 2s...</span>
+                </div>
+
+                <div id="feedback-area" class="feedback-area"></div>
+            </div>
+
+            <div class="camera-sidebar">
+                <div class="camera-box">
+                    <video id="webcam" autoplay playsinline></video>
+                </div>
+                <div class="tilt-status" id="tilt-status">Menunggu Kamera...</div>
+                <div style="font-size: 0.75rem; color: #718093; margin-top: 5px; text-align: center;">Pastikan wajah jelas.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. HALAMAN KEPUTUSAN -->
+    <div id="result-screen" class="screen">
+        <div class="mascot-container" id="result-emoji">🏆</div>
+        <h1>TAHNIAH!</h1>
+        <h2 id="final-score-text">Markah Anda: 100/100</h2>
+        <p id="result-message">Hebat sekali! Anda sudah menguasai penggunaan kata nafi BUKAN dan TIDAK dengan cemerlang.</p>
+        <button class="btn" onclick="restartGame()"><i class="fas fa-redo"></i> MAIN SEMULA</button>
+    </div>
+</div>
+
+<script>
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSound(type) {
+        if (!audioCtx) return;
+        if(audioCtx.state === 'suspended') { audioCtx.resume(); }
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        if (type === 'correct') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15);
+            gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.3);
+        } else if (type === 'wrong') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+            osc.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.25);
+            gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.3);
+        } else if (type === 'tick') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.05);
+        }
+    }
+</script>
+
+<script>
+    const questions = [
+        { question: "Rumah itu ______ rumah saya.", answer: "BUKAN", reason: "'BUKAN' digunakan di hadapan frasa nama atau frasa sendi nama." },
+        { question: "Adik ______ suka makan sayur.", answer: "TIDAK", reason: "'TIDAK' digunakan di hadapan frasa kerja atau frasa adjektif." },
+        { question: "Lelaki yang memakai baju merah itu ______ ayah saya.", answer: "BUKAN", reason: "'BUKAN' digunakan di hadapan frasa nama ('ayah saya')." },
+        { question: "Siti ______ hadir ke sekolah kerana demam.", answer: "TIDAK", reason: "'TIDAK' digunakan di hadapan frasa kerja ('hadir')." },
+        { question: "Beg yang berwarna biru itu ______ milik Amin.", answer: "BUKAN", reason: "'BUKAN' digunakan di hadapan frasa nama ('milik Amin')." },
+        { question: "Kakak ______ mahu pergi ke taman permainan.", answer: "TIDAK", reason: "'TIDAK' digunakan di hadapan frasa kerja ('mahu pergi')." },
+        { question: "Kucing itu ______ haiwan peliharaan saya.", answer: "BUKAN", reason: "'BUKAN' digunakan di hadapan frasa nama." },
+        { question: "Murid-murid ______ dibenarkan berlari di dalam kelas.", answer: "TIDAK", reason: "'TIDAK' digunakan di hadapan frasa kerja pasif." },
+        { question: "Makanan itu ______ untuk dimakan oleh adik.", answer: "BUKAN", reason: "'BUKAN' digunakan di hadapan frasa sendi nama." },
+        { question: "Amir ______ menyiapkan kerja sekolahnya semalam.", answer: "TIDAK", reason: "'TIDAK' digunakan di hadapan frasa kerja ('menyiapkan')." }
+    ];
+
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let isAnswerLocked = false;
+    let faceLandmarker = undefined;
+    let webcamRunning = false;
+    let video;
+    let lastVideoTime = -1;
+
+    let currentTiltDirection = null;
+    let tiltStartTime = null;
+    const holdDuration = 2000; 
+
+    function goToScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+        if (screenId !== 'game-screen') {
+            stopCamera();
+        }
+    }
+
+    async function startCameraAndGame() {
+        goToScreen('game-screen');
+        startGameLogic();
+        
+        // Memastikan permainan tetap berjalan walaupun model MediaPipe lewat dimuatkan
+        try {
+            await initMediaPipe();
+        } catch (err) {
+            console.warn("MediaPipe dimuatkan lewat atau gagal:", err);
+            document.getElementById('tilt-status').innerText = "Kamera Aktif (Mod Asas)";
+        }
+    }
+
+    function startGameLogic() {
+        currentQuestionIndex = 0;
+        score = 0;
+        isAnswerLocked = false;
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        if (currentQuestionIndex >= questions.length) {
+            endGame();
+            return;
+        }
+
+        isAnswerLocked = false;
+        currentTiltDirection = null;
+        tiltStartTime = null;
+
+        const q = questions[currentQuestionIndex];
+        document.getElementById('question-counter').innerText = `Soalan ${currentQuestionIndex + 1}/10`;
+        document.getElementById('score-display').innerText = `Markah: ${score}`;
+        document.getElementById('question-text').innerText = q.question;
+        
+        const progressPercent = (currentQuestionIndex / questions.length) * 100;
+        document.getElementById('progress-bar').style.width = `${progressPercent}%`;
+
+        const feedbackArea = document.getElementById('feedback-area');
+        feedbackArea.style.display = 'none';
+        
+        document.getElementById('choice-bukan').classList.remove('highlight');
+        document.getElementById('choice-tidak').classList.remove('highlight');
+        document.getElementById('countdown-text').style.display = 'none';
+    }
+
+    function confirmAnswer(selectedChoice) {
+        if (isAnswerLocked) return;
+        isAnswerLocked = true;
+
+        const q = questions[currentQuestionIndex];
+        const feedbackArea = document.getElementById('feedback-area');
+        const isCorrect = (selectedChoice === q.answer);
+
+        if (selectedChoice === 'BUKAN') {
+            document.getElementById('choice-bukan').classList.add('highlight');
+        } else {
+            document.getElementById('choice-tidak').classList.add('highlight');
+        }
+
+        document.getElementById('countdown-text').style.display = 'none';
+
+        if (isCorrect) {
+            score += 10;
+            playSound('correct');
+            feedbackArea.className = 'feedback-area feedback-correct';
+            feedbackArea.innerHTML = `<i class="fas fa-check-circle"></i> TAHNIAH! JAWAPAN ANDA BETUL! (+10 Markah)<br><small style="font-weight:normal; font-size:1rem;">${q.reason}</small>`;
+        } else {
+            playSound('wrong');
+            feedbackArea.className = 'feedback-area feedback-wrong';
+            feedbackArea.innerHTML = `<i class="fas fa-times-circle"></i> CUBA LAGI! JAWAPAN YANG BETUL IALAH <strong>${q.answer}</strong><br><small style="font-weight:normal; font-size:1rem;">${q.reason}</small>`;
+        }
+
+        feedbackArea.style.display = 'block';
+        document.getElementById('score-display').innerText = `Markah: ${score}`;
+
+        setTimeout(() => {
+            currentQuestionIndex++;
+            loadQuestion();
+        }, 4000);
+    }
+
+    function endGame() {
+        stopCamera();
+        goToScreen('result-screen');
+        document.getElementById('final-score-text').innerText = `Markah Anda: ${score} / 100`;
+        
+        const msg = document.getElementById('result-message');
+        const emoji = document.getElementById('result-emoji');
+        if (score >= 80) {
+            emoji.innerText = '🏆';
+            msg.innerText = 'Cemerlang! Anda sangat mahir menggunakan kata nafi BUKAN dan TIDAK.';
+        } else if (score >= 50) {
+            emoji.innerText = '⭐';
+            msg.innerText = 'Bagus! Teruskan latihan untuk lebih mantap.';
+        } else {
+            emoji.innerText = '💡';
+            msg.innerText = 'Jangan putus asa! Cuba ulangi semula permainan ini.';
+        }
+    }
+
+    function restartGame() {
+        goToScreen('main-screen');
+    }
+
+    async function initMediaPipe() {
+        video = document.getElementById('webcam');
+        const statusEl = document.getElementById('tilt-status');
+
+        statusEl.innerText = "Meminta Akses Kamera...";
+        const constraints = { video: { width: 320, height: 240 } };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = stream;
+        webcamRunning = true;
+
+        statusEl.innerText = "Memuatkan AI...";
+        const filesetResolver = await window.FilesetResolver.forVisionTasks(
+            "https://cdn.jsdelivr.net/npm/@mediapipe/face_landmarker/wasm"
+        );
+        
+        faceLandmarker = await window.FaceLandmarker.createFromOptions(filesetResolver, {
+            baseOptions: {
+                modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+                delegate: "CPU"
+            },
+            runningMode: "VIDEO",
+            numFaces: 1
+        });
+
+        statusEl.innerText = "Kamera Aktif! Sedia Miring Kepala.";
+        video.addEventListener('loadeddata', () => {
+            predictWebcam();
+        });
+    }
+
+    function stopCamera() {
+        webcamRunning = false;
+        if (video && video.srcObject) {
+            const tracks = video.srcObject.getTracks();
+            tracks.forEach(track => track.stop());
+            video.srcObject = null;
+        }
+    }
+
+    async function predictWebcam() {
+        if (!webcamRunning || !faceLandmarker) return;
+
+        let startTimeMs = performance.now();
+        if (lastVideoTime !== video.currentTime) {
+            lastVideoTime = video.currentTime;
+            const results = faceLandmarker.
